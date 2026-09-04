@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ETA Rail — Predict Your Train Arrival</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1326;
+    --bg-alt:#060e20;
+    --surface:#131b2e;
+    --surface-alt:#171f33;
+    --surface-hi:#222a3d;
+    --border:#2d3449;
+    --text-hi:#dae2fd;
+    --text-body:#c3c6d7;
+    --text-mute:#8d90a0;
+    --blue:#2563eb;
+    --blue-soft:#b4c5ff;
+    --cyan:#4cd7f6;
+    --green:#4edea3;
+    --red:#ffb4ab;
+
+    --font-display:'Plus Jakarta Sans', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text-body);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  img{ display:block; max-width:100%; }
+  a{ color:inherit; text-decoration:none; }
+  button{ font:inherit; cursor:pointer; border:none; }
+  input{ font:inherit; }
+  :focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+
+  .wrap{ max-width:1280px; margin:0 auto; padding:0 24px; }
+
+  /* ---------- Header ---------- */
+  .site-header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(11,19,38,0.85);
+    backdrop-filter:blur(12px);
+    box-shadow:0 1px 8px rgba(0,0,0,0.04);
+  }
+  .header-inner{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; height:64px;
+  }
+  .brand{ display:flex; align-items:center; gap:16px; }
+  .brand-mark{
+    width:32px; height:32px; border-radius:8px; flex:none;
+    background:linear-gradient(135deg,var(--blue),var(--cyan));
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-family:var(--font-display); font-weight:700; font-size:15px;
+  }
+  .brand-text .name{ font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--text-hi); letter-spacing:-0.02em; line-height:1.25; }
+  .brand-text .tag{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--cyan); letter-spacing:0.05em; text-transform:uppercase; }
+  .status-pill{
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface); padding:4px 12px; border-radius:999px;
+  }
+  .dot{ width:8px; height:8px; border-radius:999px; background:var(--green); flex:none; }
+  .dot.pulse{ position:relative; }
+  .dot.pulse::before{
+    content:''; position:absolute; inset:0; border-radius:999px;
+    background:inherit; opacity:0.75; animation:pulse 1.6s ease-out infinite;
+  }
+  @keyframes pulse{ 0%{ transform:scale(1); opacity:0.6; } 100%{ transform:scale(2.2); opacity:0; } }
+  .status-pill .label{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.05em; color:var(--green); white-space:nowrap; }
+
+  .main-nav{ display:flex; align-items:center; gap:8px; }
+  .main-nav a{
+    font-family:var(--font-body); font-weight:600; font-size:13px; letter-spacing:0.02em;
+    color:var(--text-body); padding:8px 12px; border-radius:8px;
+  }
+  .main-nav a:hover{ background:var(--surface-hi); color:var(--text-hi); }
+  .main-nav a.active{ background:var(--blue); color:#eeefff; }
+
+  .header-actions{ display:flex; align-items:center; gap:12px; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--font-body); font-weight:600; font-size:13px; letter-spacing:0.02em;
+    padding:12px 24px; border-radius:8px; white-space:nowrap;
+  }
+  .btn.sm{ padding:8px 16px; }
+  .btn-primary{ background:var(--blue); color:#eeefff; box-shadow:0 4px 12px -2px rgba(2,6,23,0.6); }
+  .btn-primary:hover{ background:#1d4ed8; }
+  .btn-ghost{ background:var(--surface-hi); color:var(--text-hi); }
+  .btn-ghost:hover{ background:var(--border); }
+  .icon-btn{
+    width:32px; height:32px; border-radius:999px; background:var(--blue-soft);
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .nav-toggle{ display:none; background:none; color:var(--text-hi); padding:8px; border-radius:8px; }
+  .nav-toggle:hover{ background:var(--surface-hi); }
+
+  /* ---------- Hero ---------- */
+  .hero-glow-wrap{ position:relative; overflow:clip; padding:48px 0; }
+  .hero-glow{
+    position:absolute; top:-128px; left:50%; transform:translateX(-50%);
+    width:840px; height:380px; filter:blur(32px); pointer-events:none;
+    background:linear-gradient(180deg, rgba(37,99,235,0.2), rgba(3,181,211,0.1), rgba(3,181,211,0));
+  }
+  .hero-grid{
+    position:relative; display:grid; grid-template-columns:repeat(12,1fr); gap:32px; align-items:center;
+  }
+  .hero-copy{ grid-column:span 7; display:flex; flex-direction:column; gap:16px; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
+    background:var(--surface-hi); border-radius:999px; padding:4px 12px;
+  }
+  .eyebrow .core{ position:relative; width:8px; height:8px; }
+  .eyebrow .core::before, .eyebrow .core::after{
+    content:''; position:absolute; inset:0; border-radius:999px; background:var(--cyan);
+  }
+  .eyebrow .core::before{ opacity:0.75; animation:pulse 1.6s ease-out infinite; }
+  .eyebrow .txt{ font-family:var(--font-mono); font-weight:600; font-size:11px; color:var(--cyan); letter-spacing:0.05em; text-transform:uppercase; }
+  .eyebrow .ver{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-mute); background:var(--bg-alt); border-radius:4px; padding:0 4px; }
+
+  h1.hero-title{
+    font-family:var(--font-display); font-weight:700; font-size:48px; line-height:1.17;
+    letter-spacing:-0.03em; color:var(--text-hi); margin:0;
+  }
+  h1.hero-title .grad{
+    background:linear-gradient(90deg,var(--blue-soft),var(--cyan),var(--green));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero-desc{ font-size:16px; line-height:1.625; letter-spacing:-0.01em; color:var(--text-body); max-width:640px; }
+  .hero-actions{ display:flex; flex-wrap:wrap; gap:12px; padding-top:8px; }
+  .hero-actions .btn svg{ width:16px; height:16px; flex:none; }
+
+  .quick-signals{ display:flex; gap:12px; padding-top:12px; max-width:576px; flex-wrap:wrap; }
+  .signal{ flex:1 1 0; min-width:150px; background:var(--surface); border-radius:8px; padding:8px; }
+  .signal .k{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-mute); letter-spacing:0.05em; text-transform:uppercase; }
+  .signal .v{ display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-weight:600; font-size:14px; color:var(--text-hi); margin-top:4px; }
+  .signal .v .dot{ width:6px; height:6px; }
+  .signal.cyan .v{ color:var(--cyan); }
+  .signal.green .v{ color:var(--green); }
+
+  .hero-visual{
+    grid-column:span 5; position:relative; border-radius:12px; overflow:clip;
+    background:var(--bg-alt); box-shadow:0 25px 50px -12px rgba(6,14,32,0.8);
+    aspect-ratio:494/420;
+  }
+  .hero-visual img.bg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .hero-visual::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(to top, var(--bg-alt), rgba(6,14,32,0.3) 50%, rgba(6,14,32,0));
+  }
+  .hud-row{ position:absolute; top:12px; left:12px; right:12px; z-index:2; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .hud-chip{
+    display:flex; align-items:center; gap:8px; padding:4px 12px; border-radius:8px;
+    background:rgba(6,14,32,0.85); backdrop-filter:blur(6px);
+    font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; white-space:nowrap;
+  }
+  .hud-chip.cyan{ color:var(--cyan); }
+  .hud-chip.green{ color:var(--green); }
+  .telemetry-capsule{
+    position:absolute; left:12px; right:12px; bottom:12px; z-index:2;
+    background:rgba(23,31,51,0.9); backdrop-filter:blur(6px); border-radius:8px; padding:12px;
+    box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .telemetry-capsule .top{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .telemetry-capsule .train-id{ font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--text-hi); }
+  .delay-badge{ font-family:var(--font-mono); font-weight:700; font-size:11px; letter-spacing:0.05em; color:var(--red); background:rgba(255,180,171,0.15); border-radius:4px; padding:2px 8px; white-space:nowrap; }
+  .telemetry-capsule .stats{ display:flex; gap:8px; flex-wrap:wrap; }
+  .telemetry-capsule .stat{ flex:1 1 0; min-width:100px; }
+  .telemetry-capsule .stat .k{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-mute); letter-spacing:0.05em; }
+  .telemetry-capsule .stat .v{ font-family:var(--font-mono); font-weight:600; font-size:14px; color:var(--text-hi); margin-top:2px; }
+  .telemetry-capsule .stat.cyan .v{ color:var(--cyan); }
+  .telemetry-capsule .stat.green .v{ color:var(--green); }
+
+  /* ---------- Search card ---------- */
+  .search-card{
+    position:relative; background:var(--surface-alt); border-radius:12px; padding:24px;
+    box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+    overflow:clip; display:flex; flex-direction:column; gap:16px;
+  }
+  .search-card::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:4px;
+    background:linear-gradient(90deg,var(--blue-soft),var(--cyan),var(--green));
+  }
+  .search-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .search-head .eyebrow-txt{ font-family:var(--font-mono); font-weight:600; font-size:11px; color:var(--cyan); letter-spacing:0.05em; text-transform:uppercase; }
+  .search-head h2{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-0.01em; color:var(--text-hi); margin:2px 0 0; }
+  .sync-note{ display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-body); letter-spacing:0.05em; }
+  .sync-note svg{ width:16px; height:16px; flex:none; color:var(--text-body); }
+
+  .search-form{ display:grid; grid-template-columns:repeat(12,1fr); gap:12px; align-items:end; }
+  .field{ display:flex; flex-direction:column; gap:4px; }
+  .field.train{ grid-column:span 4; }
+  .field.from, .field.to{ grid-column:span 3; }
+  .field label{ display:flex; align-items:center; gap:4px; font-weight:600; font-size:13px; letter-spacing:0.02em; color:var(--text-body); }
+  .field label svg{ width:11px; height:13px; flex:none; }
+  .field .input-wrap{ position:relative; }
+  .field input{
+    width:100%; background:var(--surface); border:1px solid transparent; border-radius:8px;
+    padding:12px 16px; color:var(--text-hi); font-family:var(--font-mono); font-size:14px;
+  }
+  .field input:focus{ border-color:var(--cyan); outline:none; }
+  .field .hint{
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    font-family:'Courier New', monospace; font-size:11px; letter-spacing:0.05em; color:var(--text-mute); pointer-events:none;
+  }
+  .search-submit{ grid-column:span 2; }
+  .search-submit .btn{ width:100%; justify-content:center; height:44px; }
+
+  .quick-tags{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:8px; }
+  .quick-tags .lbl{ font-weight:600; font-size:11px; letter-spacing:0.05em; color:var(--text-mute); text-transform:uppercase; white-space:nowrap; }
+  .tag-btn{
+    display:inline-flex; align-items:center; gap:4px; background:var(--surface-hi); border-radius:999px;
+    padding:4px 12px; font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--text-body);
+  }
+  .tag-btn:hover{ background:var(--border); }
+  .tag-btn .dot{ width:6px; height:6px; }
+
+  /* ---------- Live status dashboard ---------- */
+  .status-card{ background:var(--surface); border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:clip; }
+  .status-ribbon{ background:var(--surface-hi); display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 16px; flex-wrap:wrap; }
+  .ribbon-left{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .ribbon-left .title{ font-family:var(--font-mono); font-weight:600; font-size:11px; letter-spacing:0.03em; color:var(--text-hi); text-transform:uppercase; }
+  .ribbon-left .sub{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-body); letter-spacing:0.05em; }
+  .ribbon-right{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .ribbon-right .sync{ display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--green); letter-spacing:0.05em; }
+  .ribbon-right .sync svg{ width:9px; height:13px; }
+  .ribbon-right .section-id{ background:var(--bg-alt); border-radius:4px; padding:2px 8px; font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-mute); letter-spacing:0.05em; }
+
+  .status-body{ padding:24px; display:flex; flex-direction:column; gap:24px; }
+  .identity-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .identity-name-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .identity-name-row h3{ font-family:var(--font-display); font-weight:700; font-size:32px; letter-spacing:-0.02em; color:var(--text-hi); margin:0; }
+  .train-no-badge{ background:rgba(37,99,235,0.3); color:var(--blue-soft); font-family:var(--font-mono); font-weight:700; font-size:14px; border-radius:4px; padding:2px 8px; }
+  .train-type-badge{ background:var(--surface-hi); color:var(--text-body); font-weight:600; font-size:11px; letter-spacing:0.03em; border-radius:4px; padding:2px 8px; }
+  .identity-loc{ font-size:14px; color:var(--text-body); margin-top:4px; }
+  .identity-loc .hl{ color:var(--cyan); font-weight:500; }
+
+  .eta-callout{ position:relative; display:flex; align-items:center; gap:16px; background:var(--surface-alt); border-radius:12px; padding:12px; box-shadow:inset 0 2px 4px rgba(0,0,0,0.05); flex-wrap:wrap; }
+  .eta-callout .sched{ padding-right:16px; }
+  .eta-callout .sched .k{ font-weight:600; font-size:11px; letter-spacing:0.05em; color:var(--text-mute); text-transform:uppercase; }
+  .eta-callout .sched .v{ font-family:var(--font-mono); font-weight:700; font-size:20px; letter-spacing:-0.02em; color:var(--text-body); margin-top:2px; }
+  .eta-callout .ml{ background:rgba(37,99,235,0.2); border-radius:8px; padding:8px 12px; }
+  .eta-callout .ml .top{ display:flex; align-items:center; gap:4px; }
+  .eta-callout .ml .top svg{ width:15px; height:15px; color:var(--cyan); }
+  .eta-callout .ml .top .lbl{ font-family:var(--font-mono); font-weight:700; font-size:11px; letter-spacing:0.05em; color:var(--cyan); text-transform:uppercase; }
+  .eta-callout .ml .v{ font-family:var(--font-mono); font-weight:700; font-size:20px; letter-spacing:-0.02em; color:var(--cyan); margin-top:4px; }
+  .eta-callout .ml .conf{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--green); letter-spacing:0.05em; margin-top:4px; }
+
+  .telemetry-mosaic{ display:flex; gap:12px; flex-wrap:wrap; }
+  .tcard{ flex:1 1 220px; background:var(--surface-alt); border-radius:8px; padding:16px; display:flex; flex-direction:column; justify-content:space-between; gap:8px; }
+  .tcard .k{ font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--text-mute); text-transform:uppercase; }
+  .tcard .name{ font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--text-hi); }
+  .tcard .name.cyan{ color:var(--cyan); }
+  .tcard .sub{ display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--green); }
+  .tcard .sub svg{ width:12px; height:12px; }
+  .tcard .sub.plain{ color:var(--text-body); }
+  .tcard .speed{ display:flex; align-items:baseline; gap:4px; }
+  .tcard .speed .num{ font-family:'Courier New', monospace; font-weight:700; font-size:18px; color:var(--text-hi); }
+  .tcard .speed .unit{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-mute); letter-spacing:0.05em; }
+  .tcard .delay-tag{ display:inline-block; background:rgba(255,180,171,0.15); color:var(--red); font-family:var(--font-mono); font-weight:700; font-size:14px; border-radius:4px; padding:2px 8px; align-self:flex-start; }
+
+  /* ---------- Route progress timeline ---------- */
+  .route-card{ background:var(--surface-alt); border-radius:12px; padding:24px; display:flex; flex-direction:column; gap:16px; }
+  .route-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .route-head .left{ display:flex; align-items:center; gap:8px; }
+  .route-head .left svg{ width:17px; height:9px; color:var(--text-hi); }
+  .route-head h4{ font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--text-hi); margin:0; }
+  .route-head .pct{ font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--green); white-space:nowrap; }
+
+  .timeline-scroll{ overflow-x:auto; padding:16px 0 12px; }
+  .timeline{ position:relative; min-width:720px; padding:0 16px; }
+  .track-base, .track-done, .track-upcoming{ position:absolute; top:26px; height:4px; }
+  .track-base{ left:32px; right:32px; background:var(--border); }
+  .track-done{ left:2.82%; right:37.18%; background:linear-gradient(90deg,var(--green),var(--blue-soft)); }
+  .track-upcoming{ left:62%; right:2.82%; border-top:2px dashed rgba(76,215,246,0.5); background:none; }
+
+  .stations{ display:flex; justify-content:space-between; position:relative; }
+  .station{ display:flex; flex-direction:column; align-items:center; gap:8px; width:220px; flex:none; text-align:center; }
+  .station .node{ width:24px; height:24px; border-radius:999px; display:flex; align-items:center; justify-content:center; position:relative; }
+  .station .node svg{ width:12px; height:9px; color:#08131f; }
+  .station.done .node{ background:var(--green); box-shadow:0 10px 15px -3px rgba(78,222,163,0.3), 0 4px 6px -4px rgba(78,222,163,0.3); }
+  .station.live .node{ width:28px; height:28px; background:var(--blue); box-shadow:0 20px 25px -5px rgba(37,99,235,0.5), 0 8px 10px -6px rgba(37,99,235,0.5); }
+  .station.live .node svg{ color:#eef2ff; }
+  .station.live .node::before{ content:''; position:absolute; inset:-2px; border-radius:999px; background:var(--blue); opacity:0.75; animation:pulse 1.6s ease-out infinite; z-index:-1; }
+  .station.next .node{ background:var(--border); box-shadow:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); }
+  .station.next .node .core{ width:8px; height:8px; border-radius:999px; background:var(--cyan); }
+  .station.dest .node{ background:var(--border); }
+  .station.dest .node .core{ width:8px; height:8px; border-radius:999px; background:var(--text-mute); }
+  .station .code{ font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--text-hi); }
+  .station.live .code{ color:var(--blue-soft); }
+  .station .place{ font-size:12px; color:var(--text-mute); letter-spacing:0.01em; }
+  .station.live .place{ color:var(--blue-soft); font-weight:500; }
+  .station .time{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--green); letter-spacing:0.05em; margin-top:2px; }
+  .station.live .time{ color:var(--cyan); }
+  .station.next .time{ color:var(--cyan); font-weight:600; }
+  .station .sched-strike{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-mute); letter-spacing:0.05em; text-decoration:line-through; margin-top:2px; }
+
+  .ticker{ display:flex; align-items:center; gap:8px; background:var(--surface); border-radius:8px; padding:8px; }
+  .ticker svg{ width:15px; height:11px; color:var(--text-mute); flex:none; }
+  .ticker span{ font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--text-mute); letter-spacing:0.05em; }
+
+  /* ---------- Live movement ---------- */
+  .moving-train{
+    position:absolute; top:13px; left:65%; z-index:5;
+    width:30px; height:30px; border-radius:999px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--cyan); color:#08131f;
+    box-shadow:0 0 0 5px rgba(76,215,246,0.12), 0 8px 18px rgba(76,215,246,0.35);
+    font-size:15px; line-height:1;
+    transform:translateX(-50%);
+    transition:left 1s ease, transform .4s ease;
+    pointer-events:none;
+  }
+  .moving-train.reverse{ transform:translateX(-50%) scaleX(-1); }
+
+  /* ---------- Feedback modal ---------- */
+  .feedback-overlay{
+    position:fixed; inset:0; z-index:200;
+    display:none; align-items:center; justify-content:center;
+    padding:20px; background:rgba(3,8,20,.78); backdrop-filter:blur(8px);
+  }
+  .feedback-overlay.show{ display:flex; }
+  .feedback-modal{
+    width:min(460px,100%); background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:24px; box-shadow:0 30px 80px rgba(0,0,0,.45);
+  }
+  .feedback-modal h3{ margin:0; font-family:var(--font-display); color:var(--text-hi); font-size:24px; }
+  .feedback-modal p{ color:var(--text-body); font-size:13px; line-height:1.5; margin:8px 0 18px; }
+  .feedback-stars{ display:flex; gap:8px; margin-bottom:16px; }
+  .feedback-stars button{
+    width:44px; height:40px; border-radius:8px; background:var(--surface-hi);
+    color:var(--text-mute); font-size:18px;
+  }
+  .feedback-stars button.selected{ color:var(--cyan); background:rgba(76,215,246,.12); }
+  .feedback-modal textarea{
+    width:100%; min-height:90px; resize:vertical; box-sizing:border-box;
+    background:var(--surface-alt); border:1px solid var(--border); border-radius:8px;
+    padding:12px; color:var(--text-hi); font-family:var(--font-body); outline:none;
+  }
+  .feedback-modal textarea:focus{ border-color:var(--cyan); }
+  .feedback-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .feedback-actions .btn{ min-width:100px; justify-content:center; }
+
+  /* ---------- Section heading shared ---------- */
+  .section-block{ padding:32px 0; }
+  .section-head{ display:flex; flex-direction:column; gap:8px; margin-bottom:32px; }
+  .section-head .eyebrow-txt{ font-family:var(--font-mono); font-weight:600; font-size:11px; color:var(--cyan); letter-spacing:0.05em; text-transform:uppercase; }
+  .section-head h2{ font-family:var(--font-display); font-weight:700; font-size:32px; letter-spacing:-0.02em; color:var(--text-hi); margin:0; }
+  .section-head p{ font-size:14px; color:var(--text-body); max-width:640px; line-height:1.45; margin:0; }
+
+  /* ---------- Features ---------- */
+  .features-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .feature-card{ position:relative; background:var(--surface-alt); border-radius:12px; padding:24px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -4px rgba(0,0,0,0.2); display:flex; flex-direction:column; gap:12px; min-height:286px; }
+  .feature-icon{ width:48px; height:48px; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+  .feature-icon svg{ width:26px; height:26px; }
+  .feature-icon.blue{ background:rgba(37,99,235,0.2); color:var(--cyan); }
+  .feature-icon.cyan{ background:rgba(3,181,211,0.2); color:var(--cyan); }
+  .feature-icon.red{ background:rgba(147,0,10,0.2); color:var(--red); }
+  .feature-icon.green{ background:rgba(0,125,85,0.2); color:var(--green); }
+  .feature-card h3{ font-family:var(--font-display); font-weight:700; font-size:18px; color:var(--text-hi); margin:0; }
+  .feature-card p{ font-size:14px; line-height:1.625; color:var(--text-body); margin:0; flex:1; }
+  .feature-tag{ display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; }
+  .feature-tag.green{ color:var(--green); }
+  .feature-tag.cyan{ color:var(--cyan); }
+  .feature-tag.red{ color:var(--red); }
+
+  /* ---------- Stats ---------- */
+  .stats-card{ background:var(--surface); border-radius:12px; padding:24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); display:flex; flex-direction:column; gap:24px; }
+  .stats-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .stats-head .eyebrow-txt{ font-family:var(--font-mono); font-weight:600; font-size:11px; color:var(--green); letter-spacing:0.05em; text-transform:uppercase; }
+  .stats-head h3{ font-family:var(--font-display); font-weight:700; font-size:22px; color:var(--text-hi); margin:2px 0 0; }
+  .stats-head .healthy{ display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-weight:500; font-size:11px; color:var(--cyan); letter-spacing:0.05em; }
+  .stats-row{ display:flex; gap:16px; flex-wrap:wrap; }
+  .stat{ flex:1 1 220px; background:var(--surface-alt); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:4px; }
+  .stat .k{ font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--text-mute); text-transform:uppercase; }
+  .stat .v{ font-family:'Courier New', monospace; font-weight:700; font-size:48px; letter-spacing:-0.03em; }
+  .stat.c1 .v{ color:var(--blue-soft); }
+  .stat.c2 .v{ color:var(--cyan); }
+  .stat.c3 .v{ color:var(--green); }
+  .stat.c4 .v{ color:var(--text-hi); }
+  .stat .d{ font-size:12px; color:var(--text-body); line-height:1.35; }
+
+  /* ---------- Architecture highlight ---------- */
+  .arch-card{ background:linear-gradient(90deg,var(--surface-alt),var(--surface-hi),var(--surface-alt)); border-radius:12px; padding:24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:space-between; gap:32px; flex-wrap:wrap; }
+  .arch-copy{ max-width:640px; flex:1 1 400px; }
+  .arch-tag{ display:inline-flex; align-items:center; gap:8px; background:rgba(3,181,211,0.2); color:var(--cyan); font-family:var(--font-mono); font-weight:600; font-size:11px; letter-spacing:0.05em; border-radius:4px; padding:4px 12px; }
+  .arch-tag svg{ width:13px; height:8px; }
+  .arch-copy h3{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-0.01em; color:var(--text-hi); margin:16px 0 0; }
+  .arch-copy p{ font-size:14px; line-height:1.625; color:var(--text-body); margin:12px 0 0; }
+  .arch-side{ display:flex; flex-direction:column; gap:12px; flex:0 0 auto; }
+  .code-box{ background:var(--bg-alt); border-radius:8px; padding:12px; }
+  .code-box .req{ font-family:'Courier New', monospace; font-size:11px; letter-spacing:0.05em; color:var(--green); }
+  .code-box .payload{ font-family:'Courier New', monospace; font-size:11px; letter-spacing:0.05em; color:var(--text-body); margin-top:6px; }
+  .arch-side .btn{ background:var(--border); color:var(--text-hi); box-shadow:0 1px 1px rgba(0,0,0,0.05); }
+  .arch-side .btn:hover{ background:#39415a; }
+
+  /* ---------- Footer ---------- */
+  .site-footer{ background:var(--surface); box-shadow:0 1px 4px rgba(0,0,0,0.04); }
+  .footer-top{ padding:48px 0 32px; display:flex; gap:32px; flex-wrap:wrap; }
+  .footer-col{ flex:1 1 220px; display:flex; flex-direction:column; gap:12px; }
+  .footer-brand{ display:flex; align-items:center; gap:8px; }
+  .footer-brand .brand-mark{ width:24px; height:24px; font-size:12px; }
+  .footer-brand .name{ font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--text-hi); }
+  .footer-col p{ font-size:12px; letter-spacing:0.01em; color:var(--text-body); line-height:1.35; margin:0; }
+  .footer-col h4{ font-weight:600; font-size:13px; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-hi); margin:0; }
+  .footer-nav{ display:flex; flex-direction:column; gap:4px; }
+  .footer-nav a{ font-size:12px; letter-spacing:0.01em; color:var(--text-body); }
+  .footer-nav a:hover{ color:var(--text-hi); }
+  .footer-note{ display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--cyan); }
+  .footer-note svg{ width:12px; height:12px; }
+  .footer-status{ display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--green); }
+  .footer-net{ background:var(--surface-alt); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .footer-net .lbl{ font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--text-body); }
+  .footer-net .val{ font-family:var(--font-mono); font-weight:600; font-size:20px; letter-spacing:-0.02em; color:var(--cyan); }
+  .footer-net hr{ border:none; border-top:1px solid var(--border); margin:0; }
+  .footer-net .row{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; }
+  .footer-net .row .g{ color:var(--green); }
+  .footer-bottom{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:16px 0 48px; border-top:1px solid var(--border); margin-top:0; }
+  .footer-bottom p{ font-size:12px; letter-spacing:0.01em; color:var(--text-body); margin:0; }
+  .footer-meta{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .footer-meta span{ font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:0.05em; color:var(--text-body); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1024px){
+    .hero-grid{ grid-template-columns:1fr; }
+    .hero-copy, .hero-visual{ grid-column:1 / -1; }
+    .hero-visual{ max-width:560px; }
+    .features-grid{ grid-template-columns:repeat(2,1fr); }
+    .main-nav{ display:none; }
+    .nav-toggle{ display:inline-flex; }
+  }
+  @media (max-width: 860px){
+    .search-form{ grid-template-columns:1fr 1fr; }
+    .field.train{ grid-column:1 / -1; }
+    .field.from{ grid-column:1 / 2; }
+    .field.to{ grid-column:2 / 3; }
+    .search-submit{ grid-column:1 / -1; }
+    .arch-card{ justify-content:flex-start; }
+    .arch-side{ padding-right:0 !important; }
+  }
+  @media (max-width: 640px){
+    .wrap{ padding:0 16px; }
+    h1.hero-title{ font-size:34px; }
+    .features-grid{ grid-template-columns:1fr; }
+    .search-form{ grid-template-columns:1fr; }
+    .field.from, .field.to{ grid-column:1 / -1; }
+    .identity-name-row h3{ font-size:26px; }
+    .status-pill .label{ display:none; }
+    .header-inner{ gap:8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <div class="brand-mark">ER</div>
+      <div class="brand-text">
+        <div class="name">ETA Rail</div>
+        <div class="tag">Dynamic Coaching Telematics</div>
+      </div>
+    </div>
+
+    <div class="status-pill">
+      <span class="dot pulse"></span>
+      <span class="label">ML Engine v2.4 Live</span>
+    </div>
+
+    <nav class="main-nav" aria-label="Primary">
+      <a href="#" class="active">Home</a>
+      <a href="#live-status">Live Tracking</a>
+      <a href="#search">Train Search</a>
+      <a href="#stats">Dashboard</a>
+      <a href="#features">About</a>
+      <a href="#footer">Contact</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="btn btn-primary sm">
+        <svg viewBox="0 0 12 15" fill="currentColor" aria-hidden="true"><path d="M6 0 L12 15 L6 12 L0 15 Z"/></svg>
+        Track Train
+      </button>
+      <button class="icon-btn" aria-label="Account">
+        <svg viewBox="0 0 12 12" fill="#0b1326" aria-hidden="true"><circle cx="6" cy="4" r="3"/><path d="M0 12c0-3.3 2.7-6 6-6s6 2.7 6 6z"/></svg>
+      </button>
+      <button class="nav-toggle" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero-glow-wrap">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <div class="eyebrow">
+          <span class="core"></span>
+          <span class="txt">AI Dynamic Telemetry &amp; Arrival Engine</span>
+          <span class="ver">v2.4-active</span>
+        </div>
+
+        <h1 class="hero-title">
+          Predict Your Train Arrival.<br>
+          <span class="grad">Travel With Confidence.</span>
+        </h1>
+
+        <p class="hero-desc">Dynamic ETA forecasting for coaching trains utilizing continuous locomotive GPS telemetry, route gradient topology, historical station dwell variance, and neural corridor inference.</p>
+
+        <div class="hero-actions">
+          <button class="btn btn-primary">
+            <svg viewBox="0 0 14 17" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 1v13M2 9l5 5 5-5"/></svg>
+            Track Train Now
+          </button>
+          <button class="btn btn-ghost">
+            <svg viewBox="0 0 17 13" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8.5" cy="6.5" r="4"/><path d="M1 6.5S3.5 1 8.5 1s7.5 5.5 7.5 5.5-2.5 5.5-7.5 5.5S1 6.5 1 6.5z"/></svg>
+            View Live Corridor Telemetry
+          </button>
+        </div>
+
+        <div class="quick-signals">
+          <div class="signal">
+            <div class="k">Latency Refresh</div>
+            <div class="v"><span class="dot" style="background:var(--green)"></span>4.2s GPS Sync</div>
+          </div>
+          <div class="signal cyan">
+            <div class="k">Algorithm</div>
+            <div class="v">XGB-LSTM Fusion</div>
+          </div>
+          <div class="signal green">
+            <div class="k">Network Drift</div>
+            <div class="v">&plusmn;1.8 min Mean</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <img class="bg" src="https://www.figma.com/api/mcp/asset/9e3c3fb4-baed-477b-b7a8-02f038bb0ea2.png" alt="High speed rail at night with light-trail motion blur">
+        <div class="hud-row">
+          <span class="hud-chip cyan"><span class="dot" style="background:var(--cyan);width:8px;height:8px;"></span>TRACK A-4 | V-TRAIL ACTIVE</span>
+          <span class="hud-chip green">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7l3 3 7-8"/></svg>
+            DWELL MODEL OK
+          </span>
+        </div>
+        <div class="telemetry-capsule">
+          <div class="top">
+            <span class="train-id">12609 CHENNAI EXP</span>
+            <span class="delay-badge">+12m Adjusted</span>
+          </div>
+          <div class="stats">
+            <div class="stat cyan"><div class="k">Speed</div><div class="v">82 km/h</div></div>
+            <div class="stat"><div class="k">Corridor</div><div class="v">Salem &rarr; Erode</div></div>
+            <div class="stat green"><div class="k">GPS Ping</div><div class="v">4s ago</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SEARCH ============ -->
+  <section id="search" class="wrap" style="padding:8px 24px 32px;">
+    <form class="search-card" onsubmit="return false;">
+      <div class="search-head">
+        <div>
+          <div class="eyebrow-txt">Dynamic Schedule Lookup</div>
+          <h2>Find Train &amp; Inferred ETA Forecast</h2>
+        </div>
+        <div class="sync-note">
+          <svg viewBox="0 0 17 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8.5" cy="8" r="7"/><path d="M8.5 4v4l3 2"/></svg>
+          Synced with CRIS Telemetry Gateway
+        </div>
+      </div>
+
+      <div class="search-form">
+        <div class="field train">
+          <label for="train-input">
+            <svg viewBox="0 0 11 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="9" height="9" rx="2"/><path d="M1 10l3 2M10 10l-3 2"/></svg>
+            Train Number / Name
+          </label>
+          <div class="input-wrap">
+            <input id="train-input" type="text" value="12609 - Chennai Express">
+            <span class="hint">MAS &rarr; SBC</span>
+          </div>
+        </div>
+        <div class="field from">
+          <label for="from-input">
+            <svg viewBox="0 0 11 13" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M5.5 1C2.5 1 1 3 1 5.5c0 3.5 4.5 6.5 4.5 6.5S10 9 10 5.5C10 3 8.5 1 5.5 1z"/><circle cx="5.5" cy="5.5" r="1.5"/></svg>
+            From Station
+          </label>
+          <input id="from-input" type="text" value="MAS - Chennai Central">
+        </div>
+        <div class="field to">
+          <label for="to-input">
+            <svg viewBox="0 0 9 13" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4.5 1C2 1 1 3 1 5c0 3.5 3.5 6.5 3.5 6.5S8 8.5 8 5c0-2-1-4-3.5-4z"/><circle cx="4.5" cy="5" r="1.3"/></svg>
+            To Station
+          </label>
+          <input id="to-input" type="text" value="CBE - Coimbatore Jn">
+        </div>
+        <div class="search-submit">
+          <button class="btn btn-primary" type="submit">
+            <svg viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="7" r="5.5"/><path d="M11 11l4.5 4.5"/></svg>
+            Forecast ETA
+          </button>
+        </div>
+      </div>
+
+      <div class="quick-tags">
+        <span class="lbl">Frequent searches:</span>
+        <button type="button" class="tag-btn"><span class="dot" style="background:var(--green)"></span>12609 Chennai Exp</button>
+        <button type="button" class="tag-btn"><span class="dot" style="background:var(--cyan)"></span>20607 Vande Bharat</button>
+        <button type="button" class="tag-btn"><span class="dot" style="background:var(--blue-soft)"></span>12675 Kovai Exp</button>
+        <button type="button" class="tag-btn"><span class="dot" style="background:var(--blue-soft)"></span>12007 Shatabdi Exp</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ============ LIVE STATUS DASHBOARD ============ -->
+  <section id="live-status" class="wrap" style="padding:0 24px 32px;">
+    <div class="status-card">
+      <div class="status-ribbon">
+        <div class="ribbon-left">
+          <span class="dot pulse" style="width:10px;height:10px;"></span>
+          <span class="title">Live Corridor Telemetry</span>
+          <span class="sub">&bull;</span>
+          <span class="sub">Real-time GPS &amp; Signal Block Feed</span>
+        </div>
+        <div class="ribbon-right">
+          <span class="sync">
+            <svg viewBox="0 0 9 13" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4.5 1v11M1 8.5l3.5 3.5 3.5-3.5"/></svg>
+            Auto-sync: 60s
+          </span>
+          <span class="section-id">Section #ED-24</span>
+        </div>
+      </div>
+
+      <div class="status-body">
+        <div class="identity-row">
+          <div>
+            <div class="identity-name-row">
+              <h3>Chennai Express</h3>
+              <span class="train-no-badge">12609</span>
+              <span class="train-type-badge">Superfast Coaching</span>
+            </div>
+            <p class="identity-loc">Currently navigating <span class="hl">Salem &ndash; Erode Section</span> &bull; Towards Coimbatore Junction</p>
+          </div>
+
+          <div class="eta-callout">
+            <div class="sched">
+              <div class="k">Scheduled Arrival</div>
+              <div class="v">07:30 PM</div>
+            </div>
+            <div class="ml">
+              <div class="top">
+                <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7.5 1a6.5 6.5 0 100 13 6.5 6.5 0 000-13z"/><path d="M7.5 4v3.5l2.5 1.5"/></svg>
+                <span class="lbl">Dynamic ML ETA</span>
+              </div>
+              <div class="v">07:42 PM</div>
+              <div class="conf">94.8% Confidence</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="telemetry-mosaic">
+          <div class="tcard">
+            <div class="k">Current Station</div>
+            <div>
+              <div class="name">Salem Jn (SA)</div>
+              <div class="sub">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 6l3 3 5-6"/></svg>
+                Departed 06:48 PM
+              </div>
+            </div>
+          </div>
+          <div class="tcard">
+            <div class="k">Next Scheduled Stop</div>
+            <div>
+              <div class="name cyan">Erode Jn (ED)</div>
+              <div class="sub plain">Approaching Platform 3</div>
+            </div>
+          </div>
+          <div class="tcard">
+            <div class="k">Speed Telemetry</div>
+            <div>
+              <div class="speed"><span class="num">82</span><span class="unit">km/h</span></div>
+              <div class="sub plain" style="margin-top:4px;">Max Permissible: 110 km/h</div>
+            </div>
+          </div>
+          <div class="tcard">
+            <div class="k">Delay Delta</div>
+            <div>
+              <span class="delay-tag">+12 Minutes</span>
+              <div class="sub plain" style="margin-top:6px;">Signal at Magnesite Jn</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="route-card">
+          <div class="route-head">
+            <div class="left">
+              <svg viewBox="0 0 17 9" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4.5h15M11 1l4 3.5-4 3.5"/></svg>
+              <h4>Corridor Progress Timeline</h4>
+            </div>
+            <span class="pct">65% Completed (258 / 497 KM)</span>
+          </div>
+
+          <div class="timeline-scroll">
+            <div class="timeline">
+              <div class="track-base"></div>
+              <div class="track-done"></div>
+              <div class="track-upcoming"></div>
+              <div class="moving-train" id="moving-train" aria-label="Train moving">🚆</div>
+              <div class="stations">
+                <div class="station done">
+                  <div class="node"><svg viewBox="0 0 12 9" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4.5l3 3 7-7"/></svg></div>
+                  <div class="code">MAS</div>
+                  <div class="place">Chennai Ctrl</div>
+                  <div class="time">02:30 PM (Dep)</div>
+                </div>
+                <div class="station done">
+                  <div class="node"><svg viewBox="0 0 12 9" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4.5l3 3 7-7"/></svg></div>
+                  <div class="code">KPD</div>
+                  <div class="place">Katpadi Jn</div>
+                  <div class="time">04:12 PM (Dep)</div>
+                </div>
+                <div class="station live">
+                  <div class="node"><svg viewBox="0 0 11 13" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.5 1C2.7 1 1 3 1 5.5c0 3.6 4.5 6.5 4.5 6.5S10 9.1 10 5.5C10 3 8.3 1 5.5 1z"/><circle cx="5.5" cy="5.5" r="1.6"/></svg></div>
+                  <div class="code">SA (Live)</div>
+                  <div class="place">Salem Jn</div>
+                  <div class="time">06:48 PM (Dep)</div>
+                </div>
+                <div class="station next">
+                  <div class="node"><span class="core"></span></div>
+                  <div class="code">ED</div>
+                  <div class="place">Erode Jn</div>
+                  <div class="time">Pred: 07:42 PM</div>
+                  <div class="sched-strike">Sch: 07:30 PM</div>
+                </div>
+                <div class="station dest">
+                  <div class="node"><span class="core"></span></div>
+                  <div class="code">CBE</div>
+                  <div class="place">Coimbatore Jn</div>
+                  <div class="time" style="color:var(--cyan);font-weight:600;">Pred: 09:15 PM</div>
+                  <div class="sched-strike">Sch: 09:05 PM</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ticker">
+            <svg viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 9V4l5-3 5 3v5M3 9V6h6v3"/></svg>
+            <span>Dynamic model re-evaluating every 60 seconds incorporating block occupancy, line gradient, and terminal turnaround buffers.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section id="features" class="section-block wrap">
+    <div class="section-head">
+      <span class="eyebrow-txt">Architecture &amp; Features</span>
+      <h2>Intelligence Fueling Timely Arrivals</h2>
+      <p>Transforming static timetables into dynamic, hyper-aware railway telemetry models adapted for Indian Railways corridors.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon blue"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="13" cy="13" r="10"/><path d="M13 7v6l4 2"/></svg></div>
+        <h3>Live Train Tracking</h3>
+        <p>Monitor current train location, velocity, and real-time block section progression via high-frequency locomotive GPS and NTES feed convergence.</p>
+        <div class="feature-tag green"><span class="dot" style="background:var(--green)"></span>Sub-second GPS sync</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon cyan"><svg viewBox="0 0 26 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 11l6-8 6 5 6-2 6-4"/></svg></div>
+        <h3>Dynamic ETA Prediction</h3>
+        <p>Continuously recalculate expected arrival time using multi-factor machine learning taking into account track density, gradient, and dwell history.</p>
+        <div class="feature-tag cyan"><span class="dot" style="background:var(--cyan)"></span>94.8% Confidence interval</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon red"><svg viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 1l12 20H1z"/><path d="M13 9v5"/><circle cx="13" cy="17" r="0.8" fill="currentColor"/></svg></div>
+        <h3>Delay Monitoring</h3>
+        <p>Surface unexpected delays, projected cascading downstream impacts, crossing holds, and junction clearance bottlenecks in real time.</p>
+        <div class="feature-tag red"><span class="dot" style="background:var(--red)"></span>Bottleneck root-cause alerts</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon green"><svg viewBox="0 0 21 23" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10.5 1v21M2 6l8.5-5 8.5 5M2 17l8.5 5 8.5-5"/></svg></div>
+        <h3>Smart Route Analysis</h3>
+        <p>Comprehensive route breakdown detailing track topology, upcoming interlocking sections, scheduled crossings, and platform assignment previews.</p>
+        <div class="feature-tag green"><span class="dot" style="background:var(--green)"></span>Platform slot anticipation</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section id="stats" class="section-block wrap" style="padding-top:0;">
+    <div class="stats-card">
+      <div class="stats-head">
+        <div>
+          <div class="eyebrow-txt">Live System Throughput</div>
+          <h3>National Operational Matrix</h3>
+        </div>
+        <div class="healthy"><span class="dot" style="background:var(--green)"></span>Distributed Inference Nodes Healthy</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat c1">
+          <div class="k">Trains Tracked</div>
+          <div class="v">1,420+</div>
+          <div class="d">Active passenger coaching rakes across all 18 zones</div>
+        </div>
+        <div class="stat c2">
+          <div class="k">Daily ETA Predictions</div>
+          <div class="v">3.8M</div>
+          <div class="d">Inference calls processed per 24-hour cycle</div>
+        </div>
+        <div class="stat c3">
+          <div class="k">Average Delay Variance</div>
+          <div class="v">&plusmn; 2.4m</div>
+          <div class="d">Significant improvement over static timetable estimates</div>
+        </div>
+        <div class="stat c4">
+          <div class="k">Prediction Accuracy</div>
+          <div class="v">96.2%</div>
+          <div class="d">High precision within &plusmn;5 minute actual arrival window</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ARCHITECTURE / API HIGHLIGHT ============ -->
+  <section class="wrap" style="padding:32px 24px 80px;">
+    <div class="arch-card">
+      <div class="arch-copy">
+        <span class="arch-tag">
+          <svg viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 4h4l1-3 2 6 1-3h4"/></svg>
+          RESTful API / Python ML Service Ready
+        </span>
+        <h3>Developer &amp; Dispatcher Integration Gateway</h3>
+        <p>Powered by FastAPI microservices coupled with XGBoost and LSTM temporal dwell matrices. Out-of-the-box endpoints for live webhooks, route simulation, and telemetry broadcast.</p>
+      </div>
+      <div class="arch-side">
+        <div class="code-box">
+          <div class="req">GET /api/v1/forecast/12609</div>
+          <div class="payload">Payload: { "conf": 0.948, "delay_delta": 12 }</div>
+        </div>
+        <button class="btn">
+          <svg viewBox="0 0 15 12" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="13" height="10" rx="1.5"/><path d="M1 4h13"/></svg>
+          Inspect API Docs
+        </button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FEEDBACK MODAL ============ -->
+<div class="feedback-overlay" id="feedback-overlay" aria-hidden="true">
+  <div class="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+    <h3 id="feedback-title">How was your ETA Rail experience?</h3>
+    <p>Before you leave, please give us a quick rating. Your feedback helps improve the website.</p>
+    <div class="feedback-stars" id="feedback-stars" aria-label="Rating out of 5">
+      <button type="button" data-rating="1" aria-label="1 star">★</button>
+      <button type="button" data-rating="2" aria-label="2 stars">★</button>
+      <button type="button" data-rating="3" aria-label="3 stars">★</button>
+      <button type="button" data-rating="4" aria-label="4 stars">★</button>
+      <button type="button" data-rating="5" aria-label="5 stars">★</button>
+    </div>
+    <textarea id="feedback-text" placeholder="Any feedback? (optional)"></textarea>
+    <div class="feedback-actions">
+      <button type="button" class="btn" id="feedback-skip">Skip</button>
+      <button type="button" class="btn btn-primary" id="feedback-submit">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer" id="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-col">
+        <div class="footer-brand">
+          <div class="brand-mark">ER</div>
+          <span class="name">ETA Rail</span>
+        </div>
+        <p>Smart Railway ETA Prediction System powered by real-time telemetry, historical dwell-time analytics, and machine learning models for Indian Railways coaching corridors.</p>
+        <div class="footer-note">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 1a5 5 0 100 10 5 5 0 000-10z"/><path d="M6 3v3l2 1.5"/></svg>
+          Neural Corridor Inference active
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <nav class="footer-nav">
+          <a href="#live-status">Live Tracking</a>
+          <a href="#search">Train Search</a>
+          <a href="#">Dynamic Forecast Model</a>
+          <a href="#">Station Dwell Matrix</a>
+          <a href="#">API Documentation</a>
+          <a href="#">System Status</a>
+        </nav>
+      </div>
+
+      <div class="footer-col">
+        <h4>Operational Cell</h4>
+        <p>Ministry of Railways Technology Cell / AI Research Labs</p>
+        <p style="color:var(--blue-soft);font-family:var(--font-mono);font-size:11px;letter-spacing:0.05em;">support@etarail.gov.in</p>
+        <div class="footer-status"><span class="dot" style="background:var(--green)"></span>National Data Pipeline 99.98% Up</div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Network Telemetry</h4>
+        <div class="footer-net">
+          <div class="lbl">Active GPS Feeds</div>
+          <div class="val">1,420 Active Trains</div>
+          <hr>
+          <div class="row"><span>Avg Latency:</span><span class="g">120ms</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; 2025 ETA Rail Systems. Dynamic ETA Forecasting for Coaching Trains. All Rights Reserved.</p>
+      <div class="footer-meta">
+        <span>IR-CRIS Telematics Protocol v4.1</span>
+        <span>|</span>
+        <span>Encrypted Node Network</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<!-- ============ ETA RAIL JAVASCRIPT ============ -->
+<script>
+// ==========================================
+// ETA RAIL - Interactive JavaScript
+// ==========================================
+
+const searchForm = document.querySelector('.search-card');
+const trainInput = document.querySelector('#train-input');
+const fromInput = document.querySelector('#from-input');
+const toInput = document.querySelector('#to-input');
+const liveSection = document.querySelector('#live-status');
+
+// ---------- 1. Train search: both directions ----------
+// Chennai -> Kovai and Kovai -> Chennai are both accepted.
+function cleanStation(value) {
+  return (value || '').toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function getDirection(from, to) {
+  const f = cleanStation(from);
+  const t = cleanStation(to);
+
+  if ((f.includes('chennai') || f.includes('mas')) &&
+      (t.includes('kovai') || t.includes('coimbatore') || t.includes('cbe'))) {
+    return 'forward';
+  }
+
+  if ((f.includes('kovai') || f.includes('coimbatore') || f.includes('cbe')) &&
+      (t.includes('chennai') || t.includes('mas'))) {
+    return 'reverse';
+  }
+
+  return 'custom';
+}
+
+const kovaiRoute = [
+  { code: 'MAS', place: 'Chennai Central' },
+  { code: 'KPD', place: 'Katpadi Jn' },
+  { code: 'SA',  place: 'Salem Jn' },
+  { code: 'ED',  place: 'Erode Jn' },
+  { code: 'CBE', place: 'Coimbatore Jn' }
+];
+
+function updateRouteUI(direction) {
+  if (!liveSection) return;
+
+  const stations = [...document.querySelectorAll('.station')];
+  if (!stations.length) return;
+
+  // Only reverse the existing Chennai-Kovai corridor.
+  const route = direction === 'reverse' ? [...kovaiRoute].reverse() : kovaiRoute;
+
+  if (direction === 'custom') return;
+
+  const fromText = route[0];
+  const toText = route[route.length - 1];
+
+  // Update identity section.
+  const name = document.querySelector('.identity-name-row h3');
+  const location = document.querySelector('.identity-loc');
+  const nextStop = document.querySelector('.telemetry-mosaic .tcard:nth-child(2) .name');
+  const currentStation = document.querySelector('.telemetry-mosaic .tcard:nth-child(1) .name');
+
+  if (name) name.textContent = trainInput.value.match(/12675/) ? 'Kovai Express' : trainInput.value.replace(/^\s*\d+\s*[-:]?\s*/,'') || 'Selected Train';
+  if (location) {
+    location.innerHTML = `Currently navigating <span class="hl">${fromText.place} → ${toText.place}</span> • Towards ${toText.place}`;
+  }
+  if (currentStation) currentStation.textContent = `${route[Math.min(2, route.length - 1)].place} (${route[Math.min(2, route.length - 1)].code})`;
+  if (nextStop) nextStop.textContent = `${route[Math.min(3, route.length - 1)].place} (${route[Math.min(3, route.length - 1)].code})`;
+
+  stations.forEach((station, index) => {
+    const item = route[index];
+    const code = station.querySelector('.code');
+    const place = station.querySelector('.place');
+    const time = station.querySelector('.time');
+
+    station.classList.remove('done', 'live', 'next', 'dest');
+    if (index < 2) station.classList.add('done');
+    else if (index === 2) station.classList.add('live');
+    else if (index === 3) station.classList.add('next');
+    else station.classList.add('dest');
+
+    if (code) code.textContent = index === 2 ? `${item.code} (Live)` : item.code;
+    if (place) place.textContent = item.place;
+    if (time) {
+      if (index < 2) time.textContent = index === 0 ? 'Departed' : 'Passed';
+      else if (index === 2) time.textContent = 'Live now';
+      else if (index === 3) time.textContent = 'Pred: 07:42 PM';
+      else time.textContent = 'Pred: 09:15 PM';
+    }
+  });
+
+  const trainNumber = document.querySelector('.train-no-badge');
+  if (trainNumber) {
+    const number = trainInput.value.match(/\d{5}/)?.[0];
+    if (number) trainNumber.textContent = number;
+  }
+
+  // Reverse the movement direction visually.
+  const movingTrain = document.querySelector('#moving-train');
+  if (movingTrain) movingTrain.classList.toggle('reverse', direction === 'reverse');
+}
+
+if (searchForm) {
+  searchForm.addEventListener('submit', event => {
+    event.preventDefault();
+
+    const train = trainInput?.value.trim();
+    const from = fromInput?.value.trim();
+    const to = toInput?.value.trim();
+
+    if (!train || !from || !to) {
+      alert('Please enter Train Number / Name, From Station and To Station.');
+      return;
+    }
+
+    const direction = getDirection(from, to);
+    updateRouteUI(direction);
+
+    // No forced direction: whichever From -> To the user enters is accepted.
+    const message = direction === 'reverse'
+      ? `Reverse route selected ✓\n${from} → ${to}`
+      : direction === 'forward'
+        ? `Route selected ✓\n${from} → ${to}`
+        : `Custom route selected ✓\n${from} → ${to}`;
+
+    // Small confirmation instead of the old forecast popup.
+    console.log(message);
+
+    liveSection?.scrollIntoView({ behavior: 'smooth' });
+  });
+}
+
+// ---------- 2. Quick-search buttons ----------
+document.querySelectorAll('.tag-btn').forEach(tag => {
+  tag.addEventListener('click', () => {
+    if (trainInput) trainInput.value = tag.textContent.trim();
+
+    const text = tag.textContent.toLowerCase();
+    if (text.includes('kovai')) {
+      fromInput.value = 'MAS - Chennai Central';
+      toInput.value = 'CBE - Coimbatore Jn';
+    }
+  });
+});
+
+// ---------- 3. Track Train buttons ----------
+document.querySelectorAll('.btn-primary').forEach(button => {
+  // Search button already has its own submit handler.
+  if (button.closest('.search-card')) return;
+
+  button.addEventListener('click', () => {
+    liveSection?.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+// ---------- 4. Moving train telemetry ----------
+let progress = 65;
+let movementDirection = 1;
+
+function updateMovement() {
+  const movingTrain = document.querySelector('#moving-train');
+  const progressLabel = document.querySelector('.route-head .pct');
+  const doneTrack = document.querySelector('.track-done');
+  const speed = document.querySelector('.telemetry-mosaic .tcard:nth-child(3) .speed .num');
+
+  if (!movingTrain) return;
+
+  progress += movementDirection * 0.6;
+  if (progress >= 92) movementDirection = -1;
+  if (progress <= 62) movementDirection = 1;
+
+  movingTrain.style.left = `${progress}%`;
+  if (doneTrack) doneTrack.style.right = `${100 - progress + 2}%`;
+  if (progressLabel) progressLabel.textContent = `${Math.round(progress)}% Completed (258 / 497 KM)`;
+
+  // Small live speed variation for the tracking effect.
+  if (speed) speed.textContent = Math.round(78 + Math.sin(Date.now() / 1200) * 7);
+}
+
+updateMovement();
+setInterval(updateMovement, 1000);
+
+// ---------- 5. Dynamic demo ETA ----------
+function updateETA() {
+  const etaElement = document.querySelector('.eta-callout .ml .v');
+  if (!etaElement) return;
+
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 10);
+
+  let hours = now.getHours();
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+
+  etaElement.textContent = `${hours}:${minutes} ${period}`;
+}
+
+updateETA();
+setInterval(updateETA, 60000);
+
+// ---------- 6. Mobile navigation ----------
+const menuButton = document.querySelector('.nav-toggle');
+const navigation = document.querySelector('.main-nav');
+
+if (menuButton && navigation) {
+  menuButton.addEventListener('click', () => {
+    const isOpen = navigation.style.display === 'flex';
+    navigation.style.display = isOpen ? '' : 'flex';
+    menuButton.setAttribute('aria-expanded', String(!isOpen));
+  });
+}
+
+// ---------- 7. Account button ----------
+document.querySelector('.icon-btn')?.addEventListener('click', () => {
+  alert('Account feature coming soon.');
+});
+
+// ---------- 8. Feedback when browser Back is pressed ----------
+const feedbackOverlay = document.querySelector('#feedback-overlay');
+const feedbackStars = document.querySelectorAll('#feedback-stars button');
+const feedbackText = document.querySelector('#feedback-text');
+const feedbackSubmit = document.querySelector('#feedback-submit');
+const feedbackSkip = document.querySelector('#feedback-skip');
+let selectedRating = 0;
+let leavingSite = false;
+
+function showFeedback() {
+  if (!feedbackOverlay) return;
+  feedbackOverlay.classList.add('show');
+  feedbackOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function leaveAfterFeedback() {
+  leavingSite = true;
+  history.back();
+}
+
+// Add a history entry so the first Back press can be intercepted.
+history.pushState({ etaRailPage: true }, '', location.href);
+
+window.addEventListener('popstate', () => {
+  if (leavingSite) return;
+  history.pushState({ etaRailPage: true }, '', location.href);
+  showFeedback();
+});
+
+feedbackStars.forEach(star => {
+  star.addEventListener('click', () => {
+    selectedRating = Number(star.dataset.rating);
+    feedbackStars.forEach(item => {
+      item.classList.toggle('selected', Number(item.dataset.rating) <= selectedRating);
+    });
+  });
+});
+
+feedbackSubmit?.addEventListener('click', () => {
+  console.log('Feedback:', {
+    rating: selectedRating,
+    comment: feedbackText?.value.trim() || ''
+  });
+  leaveAfterFeedback();
+});
+
+feedbackSkip?.addEventListener('click', leaveAfterFeedback);
+
+// Prevent clicking outside from accidentally submitting.
+feedbackOverlay?.addEventListener('click', event => {
+  if (event.target === feedbackOverlay) return;
+});
+
+console.log('ETA Rail JavaScript loaded successfully 🚆');
+</script>
+
+</body>
+</html>
